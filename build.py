@@ -242,7 +242,7 @@ def step_download_python_deps(python_exe):
     run([str(python_exe), str(download_script), "--deps-dir", str(PYTHON_DEPS_DIR)])
 
 
-def step_download_maa_framework(os_arch):
+def step_download_maa_framework(os_type, os_arch):
     """步骤3: 下载 MaaFramework 原生库"""
     print("\n" + "=" * 60)
     print("[3/12] 下载 MaaFramework")
@@ -252,10 +252,16 @@ def step_download_maa_framework(os_arch):
         print(f"  {DEPS_DIR}/bin 已存在，跳过下载（如需重新下载请删除 {DEPS_DIR}）")
         return
 
-    arch_str = "x86_64" if os_arch in ("AMD64", "x86_64") else "arm64"
+    type_str = {
+        "Windows": "win",
+        "Linux": "linux",
+        "Darwin": "macos"
+    }.get(os_type)
+    arch_str = "x86_64" if os_arch in ("AMD64", "x86_64") else "aarch64"
+
     url = (
         f"https://github.com/MaaXYZ/MaaFramework/releases/download/"
-        f"{MAA_FRAMEWORK_VERSION}/MAA-win-{arch_str}-{MAA_FRAMEWORK_VERSION}.zip"
+        f"{MAA_FRAMEWORK_VERSION}/MAA-{type_str}-{arch_str}-{MAA_FRAMEWORK_VERSION}.zip"
     )
     zip_path = ROOT / f"maa-framework-{arch_str}.zip"
     download(url, zip_path)
@@ -265,7 +271,7 @@ def step_download_maa_framework(os_arch):
     print(f"  MaaFramework 解压完成 -> {DEPS_DIR}")
 
 
-def step_download_mfa(os_arch, platform_tag):
+def step_download_mfa(os_type, os_arch, platform_tag):
     """步骤4: 下载 MFAAvalonia GUI"""
     print("\n" + "=" * 60)
     print("[4/12] 下载 MFAAvalonia GUI")
@@ -275,12 +281,19 @@ def step_download_mfa(os_arch, platform_tag):
         print(f"  {MFA_DIR} 已存在，跳过下载（如需重新下载请删除该目录）")
         return
 
-    mfa_tag = "x64" if os_arch in ("AMD64", "x86_64") else "arm64"
+    type_str = {
+        "Windows": "win",
+        "Linux": "linux",
+        "Darwin": "osx"
+    }.get(os_type)
+    arch_str = "x64" if os_arch in ("AMD64", "x86_64") else "arm64"
+    archive_ext = "zip" if type_str == "win" else "tar.gz"
+
     url = (
         f"https://github.com/MaaXYZ/MFAAvalonia/releases/download/"
-        f"{MFAA_VERSION}/MFAAvalonia-{MFAA_VERSION}-win-{mfa_tag}.zip"
+        f"{MFAA_VERSION}/MFAAvalonia-{MFAA_VERSION}-{type_str}-{arch_str}.{archive_ext}"
     )
-    zip_path = ROOT / f"mfa-{mfa_tag}.zip"
+    zip_path = ROOT / f"mfa-{arch_str}.{archive_ext}"
     download(url, zip_path)
     MFA_DIR.mkdir(parents=True, exist_ok=True)
     shutil.unpack_archive(zip_path, MFA_DIR)
@@ -288,7 +301,7 @@ def step_download_mfa(os_arch, platform_tag):
     print(f"  MFAAvalonia 解压完成 -> {MFA_DIR}")
 
 
-def step_download_mxu(os_arch):
+def step_download_mxu(os_type, os_arch):
     """步骤5: 下载 MXU GUI"""
     print("\n" + "=" * 60)
     print("[5/12] 下载 MXU GUI")
@@ -298,12 +311,25 @@ def step_download_mxu(os_arch):
         print(f"  {MXU_DIR} 已存在，跳过下载（如需重新下载请删除该目录）")
         return
 
-    mxu_tag = "x86_64" if os_arch in ("AMD64", "x86_64") else "arm64"
+    type_str = {
+        "Windows": "win",
+        "Linux": "linux",
+        "Darwin": "macos"
+    }.get(os_type)
+    arch_str = "x86_64" if os_arch in ("AMD64", "x86_64") else "aarch64"
+    archive_ext = "zip" if type_str == "win" else "tar.gz"
+
+    if type_str == "linux" and arch_str == "aarch64":
+        raise RuntimeError(
+            f"MXU 暂不提供 Linux ARM64 版本: "
+            f"MXU-{type_str}-{arch_str}-{MXU_VERSION}.{archive_ext}"
+        )
+
     url = (
         f"https://github.com/MistEO/MXU/releases/download/"
-        f"{MXU_VERSION}/MXU-win-{mxu_tag}-{MXU_VERSION}.zip"
+        f"{MXU_VERSION}/MXU-{type_str}-{arch_str}-{MXU_VERSION}.{archive_ext}"
     )
-    zip_path = ROOT / f"mxu-{mxu_tag}.zip"
+    zip_path = ROOT / f"mxu-{arch_str}.{archive_ext}"
     download(url, zip_path)
     MXU_DIR.mkdir(parents=True, exist_ok=True)
     shutil.unpack_archive(zip_path, MXU_DIR)
@@ -589,15 +615,15 @@ def main():
         step_download_python_deps(python_exe)
 
         # 3. MaaFramework
-        step_download_maa_framework(os_arch)
+        step_download_maa_framework(os_type, os_arch)
 
         # 4. MFAAvalonia
         if not skip_mfa:
-            step_download_mfa(os_arch, platform_tag)
+            step_download_mfa(os_type, os_arch, platform_tag)
 
         # 5. MXU
         if not skip_mxu:
-            step_download_mxu(os_arch)
+            step_download_mxu(os_type, os_arch)
 
         # 6. 图标转换
         if not args.skip_icon:
