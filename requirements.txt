@@ -4,7 +4,8 @@ pillow
 pytz
 requests
 opencv-python
-onnxruntime-directml
+onnxruntime-directml; sys_platform == "win32"
+onnxruntime; sys_platform != "win32"
 librosa
 numpy
 scipy
